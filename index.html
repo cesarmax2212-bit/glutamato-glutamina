@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Ciclo Glutamato-Glutamina 3D</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #050814;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: #ffffff;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.65);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        #header {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            padding: 12px 20px;
+            pointer-events: auto;
+            max-width: 80vw;
+        }
+
+        #header h1 {
+            margin: 0;
+            font-size: 1.1rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            background: linear-gradient(135deg, #38bdf8, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        #header p {
+            margin: 4px 0 0 0;
+            font-size: 0.75rem;
+            color: #94a3b8;
+        }
+
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 8px 12px;
+            display: flex;
+            gap: 10px;
+            pointer-events: auto;
+            z-index: 10;
+        }
+
+        .btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #e2e8f0;
+            padding: 10px 16px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-active-healthy {
+            background: rgba(16, 185, 129, 0.25) !important;
+            border-color: #10b981 !important;
+            color: #34d399 !important;
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+        }
+
+        .btn-active-patho {
+            background: rgba(239, 68, 68, 0.25) !important;
+            border-color: #ef4444 !important;
+            color: #f87171 !important;
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+        }
+
+        #info-card {
+            position: absolute;
+            top: 80px;
+            right: 16px;
+            width: 280px;
+            padding: 16px;
+            display: none;
+            pointer-events: auto;
+            z-index: 20;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        #info-card h3 {
+            margin: 0 0 8px 0;
+            font-size: 1rem;
+            color: #38bdf8;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #info-card .close-btn {
+            cursor: pointer;
+            color: #94a3b8;
+            font-size: 1.2rem;
+            line-height: 1;
+        }
+
+        #info-card .close-btn:hover { color: #fff; }
+
+        #info-card p {
+            margin: 6px 0;
+            font-size: 0.8rem;
+            color: #cbd5e1;
+            line-height: 1.4;
+        }
+
+        #info-card .tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            margin-top: 6px;
+            background: rgba(56, 189, 248, 0.2);
+            color: #38bdf8;
+        }
+
+        #legend {
+            position: absolute;
+            bottom: 80px;
+            left: 16px;
+            padding: 12px;
+            font-size: 0.75rem;
+            pointer-events: auto;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+        .legend-item:last-child { margin-bottom: 0; }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        #patho-warning {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            padding: 10px 16px;
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid #ef4444;
+            color: #fca5a5;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: none;
+            backdrop-filter: blur(8px);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+    </style>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+
+    <div id="canvas-container"></div>
+
+    <div id="header" class="glass-panel">
+        <h1>Ciclo Glutamato-Glutamina 3D</h1>
+        <p>Modelo Tricelular Interactivo (Paredes Semi-Translúcidas)</p>
+    </div>
+
+    <div id="patho-warning">
+        ⚠️ Excitotoxicidad Activa: Acumulación Extra-sináptica
+    </div>
+
+    <div id="info-card" class="glass-panel">
+        <h3><span id="card-title">Título</span> <span class="close-btn" onclick="closeInfoCard()">&times;</span></h3>
+        <p id="card-desc">Descripción detallada...</p>
+        <div id="card-tag" class="tag">CATEGORÍA</div>
+    </div>
+
+    <div id="legend" class="glass-panel">
+        <div class="legend-item"><span class="dot" style="background:#38bdf8;"></span> Glutamato (Glu)</div>
+        <div class="legend-item"><span class="dot" style="background:#a855f7;"></span> Glutamina (Gln)</div>
+        <div class="legend-item"><span class="dot" style="background:#eab308;"></span> ATP / Enzima GS</div>
+        <div class="legend-item"><span class="dot" style="background:#ef4444;"></span> Receptores iGluR/mGluR</div>
+    </div>
+
+    <div id="controls" class="glass-panel">
+        <button id="btn-healthy" class="btn btn-active-healthy" onclick="setMode('healthy')">
+            🟢 Estado Normal (Fisiológico)
+        </button>
+        <button id="btn-patho" class="btn" onclick="setMode('pathological')">
+            🔴 Estado Patológico (ELA/Alzheimer)
+        </button>
+    </div>
+
+    <script>
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x050814, 0.015);
+
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 18, 32);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        container.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.maxDistance = 60;
+        controls.minDistance = 10;
+        controls.maxPolarAngle = Math.PI / 2 + 0.1;
+
+        const ambientLight = new THREE.AmbientLight(0x1e293b, 1.2);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+        dirLight.position.set(20, 40, 20);
+        dirLight.castShadow = true;
+        scene.add(dirLight);
+
+        const pointLight1 = new THREE.PointLight(0x38bdf8, 2, 30);
+        pointLight1.position.set(-10, 5, 0);
+        scene.add(pointLight1);
+
+        const pointLight2 = new THREE.PointLight(0x10b981, 2, 30);
+        pointLight2.position.set(10, 5, 0);
+        scene.add(pointLight2);
+
+        let currentMode = 'healthy';
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        const interactiveObjects = [];
+
+        const glassPresynapticMat = new THREE.MeshPhysicalMaterial({
+            color: 0x0284c7,
+            transmission: 0.7,
+            opacity: 1,
+            transparent: true,
+            roughness: 0.15,
+            metalness: 0.1,
+            ior: 1.33,
+            thickness: 1.2,
+            side: THREE.DoubleSide
+        });
+
+        const glassPostsynapticMat = new THREE.MeshPhysicalMaterial({
+            color: 0x4f46e5,
+            transmission: 0.7,
+            opacity: 1,
+            transparent: true,
+            roughness: 0.15,
+            metalness: 0.1,
+            ior: 1.33,
+            thickness: 1.2,
+            side: THREE.DoubleSide
+        });
+
+        const glassAstrocyteMat = new THREE.MeshPhysicalMaterial({
+            color: 0x059669,
+            transmission: 0.65,
+            opacity: 1,
+            transparent: true,
+            roughness: 0.2,
+            metalness: 0.05,
+            ior: 1.3,
+            thickness: 1.5,
+            side: THREE.DoubleSide
+        });
+
+        const preGroup = new THREE.Group();
+        const preGeo = new THREE.CylinderGeometry(3.5, 2.5, 12, 32);
+        const preMesh = new THREE.Mesh(preGeo, glassPresynapticMat);
+        preMesh.rotation.z = Math.PI / 3;
+        preMesh.position.set(-12, 4, 0);
+        preGroup.add(preMesh);
+        scene.add(preGroup);
+
+        const postGroup = new THREE.Group();
+        const postGeo = new THREE.CylinderGeometry(2.5, 4, 12, 32);
+        const postMesh = new THREE.Mesh(postGeo, glassPostsynapticMat);
+        postMesh.rotation.z = -Math.PI / 3;
+        postMesh.position.set(12, 4, 0);
+        postGroup.add(postMesh);
+        scene.add(postGroup);
+
+        const astroGroup = new THREE.Group();
+        const astroGeo = new THREE.DodecahedronGeometry(6, 2);
+        const astroMesh = new THREE.Mesh(astroGeo, glassAstrocyteMat);
+        astroMesh.scale.set(1.6, 0.9, 1.2);
+        astroMesh.position.set(0, 10, -3);
+        astroGroup.add(astroMesh);
+        scene.add(astroGroup);
+
+        const bioData = {
+            gs: {
+                title: "Glutamina Sintetasa (GS)",
+                tag: "ENZIMA ASTROCITARIA",
+                desc: "Enzima clave del astrocito que cataliza la conversión de Glutamato + NH4+ + ATP en Glutamina. Neutraliza la toxicidad del amonio y del glutamato libre."
+            },
+            atp: {
+                title: "Consumo de ATP / Transportador EAAT2",
+                tag: "BIOENERGÉTICA Y TRANSPORTE",
+                desc: "La reuptación de Glutamato por transportadores EAAT2/GLT-1 requiere acoplamiento iónico dependiente de la bomba Na+/K+ ATPasa, consumiendo altas dosis de ATP neuronal/glial."
+            },
+            receptors: {
+                title: "Receptores Postsinápticos (AMPA / NMDA)",
+                tag: "RECEPTORES GLUTAMATÉRGICOS",
+                desc: "Receptores iónicos. En la patología, la sobreestimulación mantenida provoca un influjo masivo de Ca2+, desencadenando cascadas de excitotoxicidad y muerte neuronal."
+            }
+        };
+
+        const gsGeo = new THREE.TorusGeometry(1.2, 0.4, 16, 32);
+        const gsMat = new THREE.MeshStandardMaterial({ color: 0xeab308, roughness: 0.2, metalness: 0.8, emissive: 0x854d0e, emissiveIntensity: 0.5 });
+        const gsNode = new THREE.Mesh(gsGeo, gsMat);
+        gsNode.position.set(0, 10, -2);
+        gsNode.userData = bioData.gs;
+        scene.add(gsNode);
+        interactiveObjects.push(gsNode);
+
+        const atpGeo = new THREE.IcosahedronGeometry(0.9, 0);
+        const atpMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.1, emissive: 0x0284c7, emissiveIntensity: 0.8 });
+        const atpNode = new THREE.Mesh(atpGeo, atpMat);
+        atpNode.position.set(-4, 8, -2);
+        atpNode.userData = bioData.atp;
+        scene.add(atpNode);
+        interactiveObjects.push(atpNode);
+
+        const recGroup = new THREE.Group();
+        const recGeo = new THREE.BoxGeometry(0.8, 1.5, 0.8);
+        const recMat = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.3, emissive: 0x991b1b, emissiveIntensity: 0.4 });
+        for(let i = -2; i <= 2; i += 1.3) {
+            const rec = new THREE.Mesh(recGeo, recMat);
+            rec.position.set(7, 1 + i*0.5, i * 0.8);
+            rec.userData = bioData.receptors;
+            recGroup.add(rec);
+            interactiveObjects.push(rec);
+        }
+        scene.add(recGroup);
+
+        function createFlowArrow(from, to, colorHex) {
+            const direction = new THREE.Vector3().subVectors(to, from);
+            const length = direction.length();
+            const arrowHelper = new THREE.ArrowHelper(direction.normalize(), from, length, colorHex, 1.5, 1.0);
+            scene.add(arrowHelper);
+            return arrowHelper;
+        }
+
+        const pPre = new THREE.Vector3(-7, 2, 0);
+        const pSyn = new THREE.Vector3(0, -1, 0);
+        const pAstro = new THREE.Vector3(0, 7, -2);
+        const pPreBack = new THREE.Vector3(-8, 5, 0);
+
+        createFlowArrow(pPre, pSyn, 0x38bdf8);
+        createFlowArrow(pSyn, pAstro, 0x10b981);
+        createFlowArrow(pAstro, pPreBack, 0xa855f7);
+
+        const curveHealthyGlu = new THREE.CatmullRomCurve3([pPre, pSyn, pAstro]);
+        const curveHealthyGln = new THREE.CatmullRomCurve3([pAstro, pPreBack, pPre]);
+
+        const molGeo = new THREE.SphereGeometry(0.35, 16, 16);
+        const gluMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 0.6 });
+        const glnMat = new THREE.MeshStandardMaterial({ color: 0xa855f7, emissive: 0x7e22ce, emissiveIntensity: 0.6 });
+
+        const molecules = [];
+        const NUM_MOLECULES = 28;
+
+        for(let i = 0; i < NUM_MOLECULES; i++) {
+            const isGlu = i % 2 === 0;
+            const mesh = new THREE.Mesh(molGeo, isGlu ? gluMat : glnMat);
+            
+            molecules.push({
+                mesh: mesh,
+                type: isGlu ? 'GLU' : 'GLN',
+                progress: Math.random(),
+                speed: 0.003 + Math.random() * 0.003,
+                pathOffset: new THREE.Vector3((Math.random()-0.5)*0.8, (Math.random()-0.5)*0.8, (Math.random()-0.5)*0.8),
+                pathoPos: new THREE.Vector3((Math.random() - 0.5) * 6, -1 + (Math.random() - 0.5) * 3, (Math.random() - 0.5) * 5),
+                pathoVel: new THREE.Vector3((Math.random()-0.5)*0.03, (Math.random()-0.5)*0.03, (Math.random()-0.5)*0.03)
+            });
+            scene.add(mesh);
+        }
+
+        let clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            gsNode.rotation.x += 0.01;
+            gsNode.rotation.y += 0.015;
+            atpNode.rotation.y += 0.02;
+
+            molecules.forEach(m => {
+                if (currentMode === 'healthy') {
+                    m.progress += m.speed;
+                    if (m.progress > 1) m.progress = 0;
+
+                    let point = (m.type === 'GLU') ? curveHealthyGlu.getPoint(m.progress) : curveHealthyGln.getPoint(m.progress);
+                    m.mesh.position.copy(point).add(m.pathOffset);
+                } else {
+                    if (m.type === 'GLU') {
+                        m.pathoPos.add(m.pathoVel);
+                        if (Math.abs(m.pathoPos.x) > 4) m.pathoVel.x *= -1;
+                        if (Math.abs(m.pathoPos.y + 1) > 2) m.pathoVel.y *= -1;
+                        if (Math.abs(m.pathoPos.z) > 3) m.pathoVel.z *= -1;
+                        m.mesh.position.copy(m.pathoPos);
+                    } else {
+                        m.mesh.position.lerp(pAstro, 0.02);
+                    }
+                }
+            });
+
+            if (currentMode === 'pathological') {
+                glassAstrocyteMat.color.lerp(new THREE.Color(0xef4444), 0.02);
+                glassPostsynapticMat.color.lerp(new THREE.Color(0x7f1d1d), 0.02);
+                pointLight2.color.lerp(new THREE.Color(0xef4444), 0.05);
+            } else {
+                glassAstrocyteMat.color.lerp(new THREE.Color(0x059669), 0.05);
+                glassPostsynapticMat.color.lerp(new THREE.Color(0x4f46e5), 0.05);
+                pointLight2.color.lerp(new THREE.Color(0x10b981), 0.05);
+            }
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('click', onPointerDown, false);
+        window.addEventListener('touchstart', onTouchStart, { passive: false });
+
+        function checkIntersection(x, y) {
+            mouse.x = (x / window.innerWidth) * 2 - 1;
+            mouse.y = -(y / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(interactiveObjects);
+
+            if (intersects.length > 0) {
+                const obj = intersects[0].object;
+                if (obj.userData && obj.userData.title) {
+                    showInfoCard(obj.userData);
+                }
+            }
+        }
+
+        function onPointerDown(event) {
+            if (event.target.tagName === 'BUTTON' || event.target.closest('.glass-panel')) return;
+            checkIntersection(event.clientX, event.clientY);
+        }
+
+        function onTouchStart(event) {
+            if (event.touches.length > 0) {
+                const touch = event.touches[0];
+                if (touch.target.tagName === 'BUTTON' || touch.target.closest('.glass-panel')) return;
+                checkIntersection(touch.clientX, touch.clientY);
+            }
+        }
+
+        function showInfoCard(data) {
+            document.getElementById('card-title').innerText = data.title;
+            document.getElementById('card-desc').innerText = data.desc;
+            document.getElementById('card-tag').innerText = data.tag;
+            document.getElementById('info-card').style.display = 'block';
+        }
+
+        function closeInfoCard() {
+            document.getElementById('info-card').style.display = 'none';
+        }
+
+        function setMode(mode) {
+            currentNode = mode;
+            const btnHealthy = document.getElementById('btn-healthy');
+            const btnPatho = document.getElementById('btn-patho');
+            const warning = document.getElementById('patho-warning');
+
+            if (mode === 'healthy') {
+                btnHealthy.className = 'btn btn-active-healthy';
+                btnPatho.className = 'btn';
+                warning.style.display = 'none';
+            } else {
+                btnHealthy.className = 'btn';
+                btnPatho.className = 'btn btn-active-patho';
+                warning.style.display = 'block';
+            }
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>
